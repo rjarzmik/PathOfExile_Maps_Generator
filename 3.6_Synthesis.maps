@@ -1,0 +1,175 @@
+# North West
+Cursed Crypt:Dungeon
+Dungeon:Barrows,Arid Lake,Leyline
+Barrows:Arcade,Port
+Arid Lake:Beach
+Leyline:Beach
+Beach:Ancient City
+Port<Ancient City,Pen
+Arcade<Pen
+
+Pen<Lair,Vault,Sepulchre
+Lair<Ghetto,Bone Crypt
+Vault<Bone Crypt
+Sepulchre<Fields,Ghetto
+Ghetto<Lighthouse,Orchard
+Bone Crypt:Orchard
+Fields:Dunes
+Lighthouse:Canyon
+Orchard:Canyon
+Dunes:Underground River,Laboratory
+Canyon:Moon Temple
+Laboratory:Overgrown Ruin
+Underground River:Overgrown Ruin
+
+Overgrown Ruin:Desert Spring
+Moon Temple:Palace
+Palace:Reef
+Desert Spring:Crystal Ore,Reef
+Reef:Siege
+Crystal Ore:Siege,Gardens
+Siege:Plaza
+Gardens:Plaza
+Plaza:Defiled Cathedral
+Defiled Cathedral:Lair of the Hydra
+
+# North East
+Fungal Hollow:Strand,Peninsula
+Strand:Channel
+Peninsula:Channel,Spider Lair
+Channel:Armoury,Underground Sea
+Spider Lair:Lookout,Underground Sea
+Armoury:Graveyard
+Lookout:Marshes
+Underground Sea:Marshes,Graveyard
+
+Graveyard:Quarry
+Marshes:Residence
+Quarry:Pier,Shore
+Residence:Shore
+Shore:Waterways
+Pier:Toxic Sewers
+Toxic Sewers:Villa
+Villa:Wharf,Arachnid Tomb,Chateau
+Cells>Arachnid Tomb
+Waterways:Temple
+Temple:Chateau,Arachnid Nest
+
+Chateau:Infested Valley
+Wharf:Infested Valley,Cells
+Chateau:Basilica
+Arachnid Nest:Basilica,Bog
+Bog:Carcass,Precinct
+Basilica:Carcass
+Infested Valley:Carcass,Malformation
+Carcass:Colosseum
+Malformation:Shipyard
+Colosseum:Belfry
+Shipyard:Belfry
+Belfry:Wastepool
+Wastepool:Forge of the Phoenix
+
+# South West
+Alleways<Excavation
+Alleways<Haunted Mansion
+Excavation<Maze
+Excavation<Desert
+Maze<Mausoleum
+Maze<Flooded Mine
+Mausoleum<Cage
+Flooded Mine<Grotto
+Flooded Mine<Sulphur Vents
+
+Cage<Burial Chamber
+Sulphur Vents<Overgrown Shrine
+Grotto<Necropolis
+Necropolis<Mineral Pools
+Mineral Pools<Conservatory
+Conservatory<Vaal Pyramid
+Vaal Pyramid<Mesa
+Overgrown Shrine<Bazaar
+Bazaar<Phantasmagoria
+Phantasmagoria<Tropical Island
+Tropical Island<Mesa
+Tropical Island<Scriptorium
+
+Mesa<Arsenal
+Mesa<Wasteland
+Wasteland<Courthouse
+Scriptorium<Coves
+Coves<Terrace
+Arsenal<Terrace
+Terrace<Tower
+Terrace<Colonnade
+Courthouse<Colonnade
+Colonnade<Primordial Block
+Tower<Racecourse
+Primordial Block<Lava Lake
+Racecourse<Lava Lake
+Lava Lake<Pit of the Chimera
+
+# South East
+Iceberg<Ramparts
+Ramparts<Atoll
+Ramparts<Jungle Valley
+Ramparts<Ashen Wood
+Ashen Wood<City Square
+Atoll<Glacier
+City Square<Courtyard,Crater
+Glacier<Thicket
+
+Crater<Primordial Pool
+Primordial Pool<Estuary
+Thicket<Promenade
+Promenade<Academy
+Academy<Lava Chamber
+Courtyard<Pit
+Pit<Arcademy
+Pit<Spider Forest
+Estuary<Volcano,Cemetery
+Spider Forest<Cemetery,Lava Chamber
+Lava Chamber<Castle Ruins
+Cemetery<Castle Ruins,Museum
+Volcano<Coral Ruins
+Museum<Factory
+Coral Ruins<Factory
+Castle Ruins<Relic Chamber
+
+Factory<Dig
+Relic Chamber<Arena
+Arena<Acid Caverns
+Arena<Sunken City
+Dig<Acid Caverns
+Acid Caverns<Summit
+Acid Caverns<Crimson Temple
+Sunken City<Park
+Sunken City<Crimson Temple
+Park<Ivory Temple
+Crimson Temple<Caldera
+Summit<Caldera
+Ivory Temple<Core
+Caldera<Dark Forest
+Core<Maze of the Minotaur
+Dark Forest<Maze of the Minotaur
+
+# Inter-quadrant links
+Burial Chamber~Vault
+Residence~Promenade
+Reef~Courthouse
+Terrace~Summit
+Phantasmagoria~Coral Ruins
+Waterways~Lava Chamber
+Courthouse~Wasteland
+Precinct~Sunken City
+Conservatory~Canyon
+Underground River~Arachnid Tomb
+
+# Shaper nodes
+Lair of the Hydra<Shaper
+Forge of the Phoenix<Shaper
+Pit of the Chimera<Shaper
+Maze of the Minotaur<Shaper
+
+# Align T16s around the Shaper node
+Lair of the Hydra{Pit of the Chimera
+Forge of the Phoenix{Maze of the Minotaur
