@@ -13,135 +13,133 @@
 #     written as : map1~map2
 
 import argparse
-import itertools
 import re
-from sets import Set
 
-class Quadrant:
-    def __init__(self, maps, name, tier1_map):
-        self.maps = maps
+class Map(object):
+    """A map, indexed by its name, having a tier and linked maps"""
+
+    def __init__(self, name):
+        self.name = name.strip()
+        self.tier = None
+        self.aliases = []
+        self.lowers = []
+        self.highers = []
+        self.related = []
+        self.highers_invisible = []
+
+    def add_alias(self, alias):
+        a = alias.strip()
+        if a not in self.aliases:
+            self.aliases.add(a)
+
+    def is_me(self, name):
+        """Returns true if the name is either the map name or one of its aliases"""
+        n = name.strip()
+        return n == self.name or n in self.aliases
+
+    def add_lower(self, lower):
+        """Adds a link to another map, which has a tier of self.tier - 1"""
+        if lower not in self.lowers:
+            self.lowers.append(lower)
+
+    def add_higher(self, higher, is_invisble=False):
+        """Adds a link to another map, which has a tier of self.tier + 1"""
+        if is_invisble:
+            if higher not in self.highers_invisible:
+                self.highers_invisible.append(higher)
+        else:
+            if higher not in self.highers:
+                self.highers.append(higher)
+
+    def add_related(self, related):
+        """Adds a link to another map, which has an unknown tier relation to this map"""
+        if related not in self.related:
+            self.related.append(related)
+
+    def get_print_name(self):
+        return '"%s"' % self.name
+
+    def __repr__(self):
+        return 'Map(%s)' % self.name
+
+class Quadrant(object):
+    """A collection of tiered maps, with only 1 tier1 map."""
+
+    def __init__(self, name, amap):
         self.name = name
-        self.tier1_map = tier1_map
         self.tiers = [ [] ]
+        self.tiers.append([ amap ])
         self.build()
 
     def build(self):
-        self.tiers.append([ self.tier1_map ])
         tier = 1
+        if len(self.tiers[1]) != 1:
+            raise ValueError('Quadrant can only be built out of 1 tier1 map, while we have %d' % len(self.tiers[1]))
         while True:
             nexts = []
-            for amap in self.tiers[tier]:
-                nexts += self.maps.get_next_rank_maps(amap)
-            nexts_ordered = []
-            for amap in nexts:
-                if amap not in nexts_ordered:
-                    nexts_ordered += [ amap ]
-            if len(nexts_ordered) > 0:
-                self.tiers.append(nexts_ordered)
-            else:
-                break
+            for mp in self.tiers[tier]:
+                for higher in mp.highers:
+                    if higher not in nexts:
+                        nexts.append(higher)
             tier += 1
-
-    def get_subgraph_str(self, invert_ranking=False):
-        qname = self.name.replace(' ', '_')
-        str = 'subgraph %s {\n' % qname
-        hdr = '  '
-        str += hdr + 'subgraph %s_white {\n' % qname
-        for tier in xrange(1, 6):
-            if len(self.tiers) <= tier:
+            if len(nexts) == 0:
                 break
-            str += hdr + '  ' + ' '.join(map(lambda x: '"%s"' % x, self.tiers[tier])) + '\n'
-        str += hdr + '}\n'
-        str += hdr + 'subgraph %s_yellow {\n' % qname
-        str += hdr + '  ' + 'node [style=filled color=yellow]\n'
-        for tier in xrange(6, 11):
-            if len(self.tiers) <= tier:
-                break
-            str += hdr + '  ' + ' '.join(map(lambda x: '"%s"' % x, self.tiers[tier])) + '\n'
-        str += hdr + '}\n'
-        str += hdr + 'subgraph %s_red {\n' % qname
-        str += hdr + '  ' + 'node [style=filled color=red]\n'
-        for tier in xrange(11, 17):
-            if len(self.tiers) <= tier:
-                break
-            str += hdr + '  ' + ' '.join(map(lambda x: '"%s"' % x, self.tiers[tier])) + '\n'
-        str += hdr + '}\n'
-        str += hdr + '\n'
 
-        # Same ranking
-        for tier in xrange(1, 17):
-            if len(self.tiers) <= tier:
-                break
-            str += hdr + '{rank=same ' + ' '.join(map(lambda x: '"%s"' % x, self.tiers[tier])) + '}\n'
-        str += '\n\n'
+            self.tiers.append(nexts)
 
-        # Dependencies
-        for tier in xrange(1, len(self.tiers)):
-            for amap in self.tiers[tier]:
-                if not self.maps.deps_ranked.has_key(amap):
-                    continue
-                for higher in self.maps.deps_ranked[amap]:
-                    if invert_ranking:
-                        str += hdr + '"%s" -- "%s"\n' % (higher, amap)
-                    else:
-                        str += hdr + '"%s" -- "%s"\n' % (amap, higher)
-        str += '}\n\n'
+    def get_print_name(self):
+        return self.name.replace(' ', '_')
 
-        return str
 
-    def get_same_ranks(self,quad):
-        # Same ranking
-        str = ''
-        for tier in xrange(1, 17):
-            if len(self.tiers) <= tier or len(quad.tiers) <= tier:
-                break
-            str += '  ' + '{rank=same ' + '"%s"' % self.tiers[tier][0] + '"%s"' % quad.tiers[tier][0] + '}\n'
+class Atlas(object):
+    """A collection of maps, linked and tiered"""
 
-        return str
-
-class Maps:
     def __init__(self):
-        self.deps_ranked = {}
-        self.deps_floating = {}
-        self.deps_invisible = {}
-        self.tiers = []
-        self.aliases = {}
         self.maps = []
 
-    def add_maps(self, maps):
-        for amap in maps:
-            if not amap in self.maps:
-                self.maps.append(amap)
+    def _find_map(self, mapname):
+        for mp in self.maps:
+            if mp.is_me(mapname):
+                return mp
 
-    def add_ranked_dependency(self, lower, highers):
-        #print 'Add ranked for %s -> %s' % (lower, ','.join(highers))
-        if self.deps_ranked.has_key(lower):
-            for higher in highers:
-                self.deps_ranked[lower].append(higher)
-        else:
-            self.deps_ranked[lower] = highers
+        return None
 
-    def add_floating_dependency(self, lower, highers):
-        if self.deps_floating.has_key(lower):
-            for higher in highers:
-                self.deps_floating[lower].append(higher)
-        else:
-            self.deps_floating[lower] = highers
+    def _add_map(self, mapname):
+        mp = Map(mapname)
+        if mp not in self.maps:
+            self.maps.append(mp)
 
-    def add_invisible_dependency(self, lower, highers):
-        if self.deps_invisible.has_key(lower):
-            for higher in highers:
-                self.deps_invisible[lower].append(higher)
+        return mp
+
+    def _find_or_create_map(self, mapname):
+        mp = self._find_map(mapname)
+        if not mp:
+            mp = self._add_map(mapname)
+
+        return mp
+
+    def _add_link(self, map1, map2, link):
+        if link == 'lower2higher':
+            map2.add_lower(map1)
+            map1.add_higher(map2)
+        elif link == 'higher2lower':
+            map1.add_lower(map2)
+            map2.add_higher(map1)
+        elif link == 'related':
+            map1.add_related(map2)
+            map2.add_related(map1)
+        elif link == 'lower2higher_invisible':
+            map1.add_higher(map2, True)
         else:
-            self.deps_invisible[lower] = highers
+            raise ValueError
             
-    def read_file(self, filename):
+    def read_from_file(self, filename):
         re_alias = '([^=]*)=(.*)'
         re_ranked_dependency = '([^>:]*)[:<] *(.*)'
         re_floating_dependency = '([^~]*)~ *(.*)'
         re_invisible_dependency = '([^{]*){ *(.*)'
 
-        lines = [line.strip('\n') for line in open(filename)]
+        lines = [ line.strip('\n') for line in open(filename) ]
         for line in lines:
             if len(line) == 0:
                 continue
@@ -151,84 +149,134 @@ class Maps:
 
             m = re.search(re_alias, line)
             if m:
-                aliases[m.group(1)] = m.group(2)
+                self._find_or_create_map(m.group(1)).add_alis(m.group(2))
 
             m = re.search(re_ranked_dependency, line)
             if m:
-                lower = m.group(1).strip()
-                highers = map(lambda x: x.strip(), m.group(2).split(','))
-                self.add_ranked_dependency(lower, highers)
-                self.add_maps([ lower ])
-                self.add_maps(highers)
+                lower = self._find_or_create_map(m.group(1).strip())
+                highers = map(lambda x: self._find_or_create_map(x.strip()), m.group(2).split(','))
+                for higher in highers:
+                    self._add_link(lower, higher, 'lower2higher')
             
             m = re.search(re_floating_dependency, line)
             if m:
-                lower = m.group(1).strip()
-                highers = map(lambda x: x.strip(), m.group(2).split(','))
-                self.add_floating_dependency(lower, highers)
-                self.add_maps([ lower ])
-                self.add_maps(highers)
+                lower = self._find_or_create_map(m.group(1).strip())
+                highers = map(lambda x: self._find_or_create_map(x.strip()), m.group(2).split(','))
+                for higher in highers:
+                    self._add_link(lower, higher, 'related')
 
             m = re.search(re_invisible_dependency, line)
             if m:
-                lower = m.group(1).strip()
-                highers = map(lambda x: x.strip(), m.group(2).split(','))
-                self.add_invisible_dependency(lower, highers)
-                self.add_maps([ lower ])
-                self.add_maps(highers)
+                lower = self._find_or_create_map(m.group(1).strip())
+                highers = map(lambda x: self._find_or_create_map(x.strip()), m.group(2).split(','))
+                for higher in highers:
+                    self._add_link(lower, higher, 'lower2higher_invisible')
                 
-        self.build_tiers()
+        self.build_map_tiers()
 
-    def find_leaves(self, deps):
-        not_leaves = Set(itertools.chain(*deps.values()))
-        leaves = Set(deps.keys())
-        leaves.difference_update(not_leaves)
-
-        leaves_ordered = []
-        for leaf in self.maps:
-            if leaf in leaves:
-                leaves_ordered += [ leaf ]
-
-        return leaves_ordered
-
-    def get_next_rank_maps(self, amap):
-        nexts = []
-        if self.deps_ranked.has_key(amap):
-            for bmap in self.deps_ranked[amap]:
-                if bmap not in nexts:
-                    nexts.append(bmap)
-
-        return nexts
-        
-    def build_tiers(self):
-        self.tiers.append([])
-        self.tiers.append(self.find_leaves(self.deps_ranked))
+    def build_map_tiers(self):
+        tier1s = filter(lambda m: not m.lowers, self.maps)
+        for m in tier1s:
+            m.tier = 1
+        tierNs = tier1s
         tier = 1
-
-        while len(self.tiers) > tier:
-            currents = self.tiers[tier]
-            nexts = []
-            for current in currents:
-                for next in self.get_next_rank_maps(current):
-                    if next not in nexts:
-                        nexts.append(next)
-            if len(nexts) > 0:
-                self.tiers.append(nexts)
+        while True:
+            tierNs = [ m for mp in tierNs for m in mp.highers ]
             tier += 1
+            for m in tierNs:
+                m.tier = tier
+            if len(tierNs) == 0:
+                break
+
+    def get_maps_of_tier(self, tier):
+        return filter(lambda m: m.tier == tier, self.maps)
+
+class Atlas2Graphviz(object):
+    """Convert an Atlas to a graphviz graph"""
+    def __init__(self, atlas):
+        self.atlas = atlas
+        self.quadrants = self._build_quadrants()
+
+    def _build_quadrants(self):
+        tier1s = filter(lambda m: len(m.lowers) == 0, self.atlas.maps)
+        qds = []
+        i = 0
+
+        for name in [ 'NW', 'NE', 'SW', 'SE' ]:
+            qds.append(Quadrant(name, tier1s[i]))
+            i = i + 1
+        return qds
 
     def get_floating_deps(self):
         str = ''
-        for amap in self.deps_floating.keys():
-            for bmap in self.deps_floating[amap]:
-                str += '"%s" -- "%s" [ weight = 0 ];\n' % (amap, bmap)
+        for amap in self.atlas.maps:
+            for bmap in amap.related:
+                if amap.name < bmap.name:
+                    continue
+                str += '%s -- %s [ weight = 0 ];\n' % \
+                    (amap.get_print_name(), bmap.get_print_name())
         return str
 
     def get_invisible_deps(self):
         str = ''
-        for amap in self.deps_invisible.keys():
-            for bmap in self.deps_invisible[amap]:
-                str += '"%s" -- "%s" [ style = "invis" ];\n' % (amap, bmap)
+        for amap in self.atlas.maps:
+            for bmap in amap.highers_invisible:
+                str += '%s -- %s [ style = "invis" ];\n' % \
+                    (amap.get_print_name(), bmap.get_print_name())
+
         return str
+
+    def get_tiered_mapnames(self, quadrant, tier):
+        mps_names = map(lambda x: x.get_print_name(), quadrant.tiers[tier])
+        str = ' '.join(mps_names)
+
+        return str
+
+    def get_quadrant_range_str(self, quadrant, tmin, tmax, color):
+        qname = quadrant.get_print_name().replace(' ', '_')
+        str = 'subgraph %s_%s {' % (qname, color)
+        str += '\n  ' + 'node [fontsize=24,';
+        if color is not 'white':
+            str += 'style=filled color=%s' % color
+        str += ']'
+        for tier in xrange(tmin, min(tmax + 1, len(quadrant.tiers))):
+            str += '\n  ' + self.get_tiered_mapnames(quadrant, tier)
+        str += '\n}'
+
+        return str
+
+    def get_quadrant_str(self, quadrant, invert_ranking=False):
+        qname = quadrant.get_print_name().replace(' ', '_')
+        # White, Yellow and Red maps
+        str = 'subgraph %s {' % qname
+        str += '\n  ' + self.get_quadrant_range_str(quadrant, 1, 5, 'white').replace('\n', '\n  ')
+        str += '\n\n  ' + self.get_quadrant_range_str(quadrant, 6, 10, 'yellow').replace('\n', '\n  ')
+        str += '\n\n  ' + self.get_quadrant_range_str(quadrant, 11, 16, 'red').replace('\n', '\n  ')
+        str += '\n'
+
+        # Same ranking
+        for tier in xrange(1, min(17, len(quadrant.tiers))):
+            str += '\n  ' + self.get_same_ranks_str(quadrant.tiers[tier]).replace('\n', '\n  ')
+        str += '\n'
+
+        # Dependencies
+        for tier in xrange(1, len(quadrant.tiers)):
+            for amap in quadrant.tiers[tier]:
+                for higher in amap.highers:
+                    if invert_ranking:
+                        str += '\n  %s -- %s' % \
+                            (higher.get_print_name(), amap.get_print_name())
+                    else:
+                        str += '\n  %s -- %s' % \
+                            (amap.get_print_name(), higher.get_print_name())
+        str += '\n}\n\n'
+
+        return str
+
+    def get_same_ranks_str(self, maps):
+        mps_names = map(lambda x: x.get_print_name(), maps)
+        return '{rank=same ' + ' '.join(mps_names) + '}'
+
 
 parser = argparse.ArgumentParser(description='Maps graph generator.')
 parser.add_argument('filename', help='input filename')
@@ -241,60 +289,62 @@ if args.cmd:
 else:
     cmd = 'dot'
 
-mp = Maps()
-mp.read_file(args.filename) # "3.6_Synthesis.maps")
-
-tier1s = mp.find_leaves(mp.deps_ranked)
-if len(tier1s) != 4:
-    print 'Error: we should have exactly 4 Tier1 maps'
-    print 'Tier1: %s' % ','.join(tier1s)
-    exit(1)
+atlas = Atlas()
+atlas.read_from_file(args.filename) # "3.6_Synthesis.maps")
+a2g = Atlas2Graphviz(atlas)
 
 if cmd == 'dot':
-    q_nw = Quadrant(mp, 'NW', mp.tiers[1][0])
-    q_ne = Quadrant(mp, 'NE', mp.tiers[1][1])
-    q_sw = Quadrant(mp, 'SW', mp.tiers[1][2])
-    q_se = Quadrant(mp, 'SE', mp.tiers[1][3])
-    
+    if len(atlas.get_maps_of_tier(1)) != 4:
+        raise ValueError('Can only handle 4 tier 1 maps, while we have : %s' % \
+                         ' '.join(map(lambda m: m.get_print_name(), atlas.get_maps_of_tier(1))))
+
     print '# File generated by map_deps.py, don\'t edit manually please !!!\n'
     print 'graph Atlas {\n'
     print 'ranksep = .5\n'
     print 'nodesep = .75\n'
+    #print 'fontsize = 20\n'
     
-    print q_nw.get_subgraph_str()
-    print q_ne.get_subgraph_str()
+    print a2g.get_quadrant_str(a2g.quadrants[0])
+    print a2g.get_quadrant_str(a2g.quadrants[1])
     
     print 'subgraph Shaper {'
     print '  "Shaper"'
     print '  }\n'
     
-    print q_sw.get_subgraph_str(True)
-    print q_se.get_subgraph_str(True)
+    print a2g.get_quadrant_str(a2g.quadrants[2], True)
+    print a2g.get_quadrant_str(a2g.quadrants[3], True)
     
     print '# Inter-subgraph links'
-    print mp.get_floating_deps()
-    print '\n'
+    print a2g.get_floating_deps()
     
     print '# Invisible links'
-    print mp.get_invisible_deps()
+    print a2g.get_invisible_deps()
     
     print '# Inter-quadrant alignment'
-    print q_nw.get_same_ranks(q_ne)
-    print q_sw.get_same_ranks(q_se)
+    for tier in xrange(1, min(17, a2g.quadrants[0], a2g.quadrants[1])):
+        print a2g.get_same_ranks_str(a2g.quadrants[0].tiers[tier] + a2g.quadrants[1].tiers[tier])
+    for tier in xrange(1, min(17, a2g.quadrants[2], a2g.quadrants[3])):
+        print a2g.get_same_ranks_str(a2g.quadrants[2].tiers[tier] + a2g.quadrants[3].tiers[tier])
     
     print '}\n'
 
 if cmd == 'list_maps':
     tier = 1
-    for maps in mp.tiers[1:]:
-        print 'T%d: ' % tier + ','.join(maps)
+    while True:
+        maps = atlas.get_maps_of_tier(tier)
+        if len(maps) == 0:
+            break
+        print 'T%d: ' % tier + ','.join(map(lambda x: x.name, maps))
         tier += 1
 
 if cmd == 'list_links':
     tier = 1
-    for maps in mp.tiers[1:]:
+    while True:
+        maps = atlas.get_maps_of_tier(tier)
+        if len(maps) == 0:
+            break
         hdr = '  ' * (tier - 1)
         for amap in maps:
-            if mp.deps_ranked.has_key(amap):
-                print hdr + '%s -> ' % amap + ','.join(mp.deps_ranked[amap])
+            if len(amap.highers) > 0:
+                print hdr + '%s -> ' % amap.name + ','.join(map(lambda x: x.name, amap.highers))
         tier += 1
